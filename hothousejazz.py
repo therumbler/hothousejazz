@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from datetime import datetime, timedelta
+from string import Template
 import re
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
@@ -110,14 +111,29 @@ def check_popularity(events):
     return events
 
 
-def save_html():
-    html = """
+def events_to_html(events):
+    html = ""
+    template_string = """\n<div>
+    <h3>$date</h3>
+    <h3>$artist</h3>
+    <h4>$venue</h4>
+    </div>"""
+    template = Template(template_string)
+    for event in events:
+        html += template.substitute(event)
+    return html
+
+
+def save_html(events):
+    events_html = events_to_html(events)
+    html = f"""
 <html>
 <head>
 <title>Hot House Jazz Events</title>
 </head>
 <body>
 <h1>Hot House Jazz Events</h1>
+{events_html}
 </body>
 </html>
 """
@@ -127,11 +143,11 @@ def save_html():
 
 
 def main():
-    save_html()
-    return
     events = get_calendar(1)
     # print(events)
     events = check_popularity(events)
+    save_html(events)
+    return
 
 
 if __name__ == "__main__":
