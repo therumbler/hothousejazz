@@ -115,11 +115,15 @@ def events_to_html(events):
     html = ""
     template_string = """\n<div>
     <h3>$date</h3>
-    <h3>$artist</h3>
+    <h3>$artist$starred</h3>
     <h4>$venue</h4>
     </div>"""
     template = Template(template_string)
     for event in events:
+        if event.get("popularity", 0) >= 25:
+            event["starred"] = " - POPULAR"
+        else:
+            event["starred"] = ""
         html += template.substitute(event)
     return html
 
@@ -143,7 +147,7 @@ def save_html(events):
 
 
 def main():
-    events = get_calendar(1)
+    events = get_calendar(25)
     # print(events)
     events = check_popularity(events)
     save_html(events)
