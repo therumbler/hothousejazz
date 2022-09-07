@@ -121,7 +121,7 @@ def events_to_html(events):
     template = Template(template_string)
     for event in events:
         if event.get("popularity", 0) >= 25:
-            event["starred"] = " - POPULAR"
+            event["starred"] = f" - POPULAR [{event['popularity']}]"
         else:
             event["starred"] = ""
         html += template.substitute(event)
