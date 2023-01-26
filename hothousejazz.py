@@ -100,10 +100,17 @@ def get_calendar(days=30):
     return all_events
 
 
+def fix_artist_name(artist):
+    replacements = [' Qrt', ' Qnt', ' Trio', ' Gp']
+    for rep in replacements:
+        if artist.endswith(rep):
+            artist = artist.replace(rep, '')
+    return artist
+
 def check_popularity(events):
     tidal = Tidal()
     for event in events:
-        result = tidal.search_artist(artist=event["artist"])
+        result = tidal.search_artist(artist=fix_artist_name(event["artist"]))
         if not result["items"]:
             continue
         event["popularity"] = result["items"][0]["popularity"]
