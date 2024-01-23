@@ -12,6 +12,7 @@ from tidal import Tidal
 def fetch_calendar_json(date):
     url = "https://www.hothousejazz.com/calendar-filter"
     data = {"start_date": date, "selected_date": date}
+    print("fetching url %s date %s" % (url, date))
     req = Request(url, data=urlencode(data).encode())
     req.add_header("user-agent", "Mozilla")
     resp = json.load(urlopen(req))
@@ -81,7 +82,7 @@ def get_venue_from_html(html):
 
 
 def html_to_events(html):
-    pattern = r"(<div class=.*)\n\s+\n"
+    pattern = r"(<div class=.*?)\n\s+\n"
     matches = re.findall(pattern, html, re.DOTALL)
     events = list(filter(lambda x: x, map(match_to_event, matches)))
     print("found %d events" % len(events))
@@ -96,7 +97,9 @@ def get_dates(days):
 
 
 def get_calendar(days=30):
+    print("fetching %d days ..." % days)
     dates = get_dates(days=days)
+
     json_list = map(fetch_calendar_json, dates)
     html_list = [i["data"] for i in json_list]
 
@@ -163,34 +166,15 @@ def save_html(events):
 
 
 def _test_html_to_events():
-    html = """<div class="col-lg-4 col-md-6 col-sm-6 col-12">
-                     <div class="calendar-box">
-                        <div class="row">
-                           <div class="col-lg-4 col-md-4 col-sm-4 col-12">
-                              <h5>23 <span>JAN                                 TUE</span>
-                              </h5>
-                              <p class="text-left">8:00 PM</p>
-                           </div>
-                           <div class="col-lg-8 col-md-8 col-sm-8 col-12">
-                              <div class="event-heading">
-                                 <h6>Keyon Harrold Foreverland</h6>
-                              </div>
-                           </div>
-                        </div>
-                        <p>Lower Manhattan</p>
-                        <p><i class="fas fa-map-marker-alt"></i> Blue Note,131 W 3rd St, New York, NY 10012</p>
-                        <p>http://www.bluenotejazz.com</p>
-                        <p><i class="fas fa-phone-alt"></i> 212-475-8592 </p>
-                        <p><a href="https://www.hothousejazz.com/event_detail/19621" class="online-btn">View event detail</a></p>
-                     </div>
-                  </div>
-              
-    """
+    with open("_events.html") as f:
+        html = f.read()
+
     events = html_to_events(html)
     print(events)
 
 
 def main():
+    print("starting...")
     events = get_calendar(25)
     events = check_popularity(events)
     save_html(events)
