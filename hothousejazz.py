@@ -121,11 +121,24 @@ def fix_artist_name(artist):
 
 def check_popularity(events):
     tidal = Tidal()
+
+    # with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+    #     # pass account_id and check_logs to check_account function
+    #     results = list(
+    #         executor.map(
+    #             lambda a: tidal.search_artist(artist),
+    #             [fix_artist_name(event["artist"]) for event in events],
+    #         )
+    #     )
     for event in events:
         result = tidal.search_artist(artist=fix_artist_name(event["artist"]))
+        print(result)
         if not result["items"]:
             continue
-        event["popularity"] = result["items"][0]["popularity"]
+        first_result = result["items"][0]
+        if first_result["name"].lower() != event["artist"].lower():
+            continue
+        event["popularity"] = first_result["popularity"]
         print(event)
     return events
 
