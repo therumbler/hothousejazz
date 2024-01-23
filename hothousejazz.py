@@ -132,7 +132,6 @@ def check_popularity(events):
     #     )
     for event in events:
         result = tidal.search_artist(artist=fix_artist_name(event["artist"]))
-        print(result)
         if not result["items"]:
             continue
         first_result = result["items"][0]
