@@ -1,16 +1,27 @@
 #!/usr/bin/env python3
 from datetime import datetime, timedelta
+import json
 from string import Template
 import re
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
-
+from urllib.parse import urlencode
 from tidal import Tidal
 
 
-def fetch_calendar_html(date):
+def fetch_calendar_json(date):
+    url = "https://www.hothousejazz.com/calendar-filter"
+    data = {"start_date": date, "selected_date": date}
+    req = Request(url, data=urlencode(data).encode())
+    req.add_header("user-agent", "Mozilla")
+    resp = json.load(urlopen(req))
+    return resp
+
+
+def fetch_calendar_html_old(date):
     print("fetching events for %s ..." % date)
     url = f"https://www.hothousejazz.com/generateCalender.php?what=event&date={date}&sort_by=&sort_id=&search_val=&venue_id=0&order_by=2"
+    print("url: %s" % url)
     req = Request(url)
     req.add_header("user-agent", "Mozilla")
     try:
@@ -24,19 +35,19 @@ def fetch_calendar_html(date):
 def match_to_event(html):
     if not html:
         return
-    # print(html)
+
     return {
         "date": get_date_from_html(html),
         "artist": get_artist_from_html(html),
         "time": get_time_from_html(html),
-        "city": get_city_from_html(html),
+        # "city": get_city_from_html(html),
         "venue": get_venue_from_html(html),
         "url": get_url_from_html(html),
     }
 
 
 def get_url_from_html(html):
-    pattern = r"event_detail\.php\?eid=\d+"
+    pattern = r"event_detail\/\d+"
     return f"https://www.hothousejazz.com/{re.search(pattern, html).group(0)}"
 
 
@@ -65,14 +76,13 @@ def get_city_from_html(html):
 
 
 def get_venue_from_html(html):
-    pattern = r'</p><p><i class="fas fa-map-marker-alt"></i>(.*?)</p>\s*<p>'
+    pattern = r'<p><i class="fas fa-map-marker-alt"></i>(.*?)</p>\s*<p>'
     return re.search(pattern, html).group(1).strip()
 
 
 def html_to_events(html):
-    pattern = r"(<div class=.*)\n\n"
-    matches = re.findall(pattern, html)
-
+    pattern = r"(<div class=.*)\n\s+\n"
+    matches = re.findall(pattern, html, re.DOTALL)
     events = list(filter(lambda x: x, map(match_to_event, matches)))
     print("found %d events" % len(events))
     return events
@@ -86,14 +96,12 @@ def get_dates(days):
 
 
 def get_calendar(days=30):
-    # url = "https://www.hothousejazz.com/generateCalender.php?what=event&date=2022-9-8&sort_by=&sort_id=&search_val=&venue_id=0&order_by=2"
     dates = get_dates(days=days)
-    html_list = map(fetch_calendar_html, dates)
+    json_list = map(fetch_calendar_json, dates)
+    html_list = [i["data"] for i in json_list]
+
     all_events = []
     for html in html_list:
-
-        # html = fetch_calendar_html()
-        # print(html)
         events = html_to_events(html)
         all_events.extend(events)
 
@@ -101,11 +109,12 @@ def get_calendar(days=30):
 
 
 def fix_artist_name(artist):
-    replacements = [' Qrt', ' Qnt', ' Trio', ' Gp']
+    replacements = [" Qrt", " Qnt", " Trio", " Gp"]
     for rep in replacements:
         if artist.endswith(rep):
-            artist = artist.replace(rep, '')
+            artist = artist.replace(rep, "")
     return artist
+
 
 def check_popularity(events):
     tidal = Tidal()
@@ -153,9 +162,36 @@ def save_html(events):
         f.write(html)
 
 
+def _test_html_to_events():
+    html = """<div class="col-lg-4 col-md-6 col-sm-6 col-12">
+                     <div class="calendar-box">
+                        <div class="row">
+                           <div class="col-lg-4 col-md-4 col-sm-4 col-12">
+                              <h5>23 <span>JAN                                 TUE</span>
+                              </h5>
+                              <p class="text-left">8:00 PM</p>
+                           </div>
+                           <div class="col-lg-8 col-md-8 col-sm-8 col-12">
+                              <div class="event-heading">
+                                 <h6>Keyon Harrold Foreverland</h6>
+                              </div>
+                           </div>
+                        </div>
+                        <p>Lower Manhattan</p>
+                        <p><i class="fas fa-map-marker-alt"></i> Blue Note,131 W 3rd St, New York, NY 10012</p>
+                        <p>http://www.bluenotejazz.com</p>
+                        <p><i class="fas fa-phone-alt"></i> 212-475-8592 </p>
+                        <p><a href="https://www.hothousejazz.com/event_detail/19621" class="online-btn">View event detail</a></p>
+                     </div>
+                  </div>
+              
+    """
+    events = html_to_events(html)
+    print(events)
+
+
 def main():
     events = get_calendar(25)
-    # print(events)
     events = check_popularity(events)
     save_html(events)
     return
