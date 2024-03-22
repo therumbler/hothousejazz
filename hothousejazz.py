@@ -107,7 +107,8 @@ def get_calendar(days=30):
     logger.info("fetching %d days ..." % days)
     dates = get_dates(days=days)
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor() as executor:
+        logger.info("using %d workers to fetch calendars", executor._max_workers)
         json_list = list(executor.map(fetch_calendar_json, dates))
 
     html_list = [i["data"] for i in json_list]
@@ -144,7 +145,8 @@ def _event_to_event_popularity(event):
 
 def check_popularity(events):
     start_time = time.time()
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor() as executor:
+        logger.info("using %d workers to fetch popularity", executor._max_workers)
         results = list(executor.map(_event_to_event_popularity, events))
 
     end_time = time.time()
@@ -200,6 +202,9 @@ def _test_html_to_events():
 
 def main():
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    # executor = ThreadPoolExecutor()
+    # print(executor._max_workers)
+    # return
     logger.info("starting...")
     events = get_calendar(25)
     events = check_popularity(events)
