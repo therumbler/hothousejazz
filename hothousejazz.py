@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 import json
-from string import Template
+import logging
 import re
+from string import Template
+import sys
+import time
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
 from urllib.parse import urlencode
+
 from tidal import Tidal
+
+logger = logging.getLogger("hothousejazz")
 
 
 def fetch_calendar_json(date):
     url = "https://www.hothousejazz.com/calendar-filter"
     data = {"start_date": date, "selected_date": date}
-    print("fetching url %s date %s" % (url, date))
+    logger.debug("fetching url %s date %s" % (url, date))
     req = Request(url, data=urlencode(data).encode())
     req.add_header("user-agent", "Mozilla")
     resp = json.load(urlopen(req))
@@ -20,9 +27,9 @@ def fetch_calendar_json(date):
 
 
 def fetch_calendar_html_old(date):
-    print("fetching events for %s ..." % date)
+    logger.debug("fetching events for %s ..." % date)
     url = f"https://www.hothousejazz.com/generateCalender.php?what=event&date={date}&sort_by=&sort_id=&search_val=&venue_id=0&order_by=2"
-    print("url: %s" % url)
+    logger.debug("url: %s" % url)
     req = Request(url)
     req.add_header("user-agent", "Mozilla")
     try:
@@ -30,7 +37,7 @@ def fetch_calendar_html_old(date):
         html = resp.read().decode()
         return html
     except HTTPError as ex:
-        print("HTTPError: %s" % ex.read())
+        logger.error("HTTPError: %s" % ex.read())
 
 
 def match_to_event(html):
@@ -85,7 +92,7 @@ def html_to_events(html):
     pattern = r"(<div class=.*?)\n\s+\n"
     matches = re.findall(pattern, html, re.DOTALL)
     events = list(filter(lambda x: x, map(match_to_event, matches)))
-    print("found %d events" % len(events))
+    logger.debug("found %d events" % len(events))
     return events
 
 
@@ -97,13 +104,16 @@ def get_dates(days):
 
 
 def get_calendar(days=30):
-    print("fetching %d days ..." % days)
+    logger.info("fetching %d days ..." % days)
     dates = get_dates(days=days)
 
-    json_list = map(fetch_calendar_json, dates)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        json_list = list(executor.map(fetch_calendar_json, dates))
+
     html_list = [i["data"] for i in json_list]
 
     all_events = []
+
     for html in html_list:
         events = html_to_events(html)
         all_events.extend(events)
@@ -119,28 +129,29 @@ def fix_artist_name(artist):
     return artist
 
 
-def check_popularity(events):
+def _event_to_event_popularity(event):
     tidal = Tidal()
+    fixed_artist_name = fix_artist_name(event["artist"])
+    result = tidal.search_artist(artist=fixed_artist_name)
+    if not result["items"]:
+        return event
+    first_result = result["items"][0]
+    if first_result["name"].lower() != fixed_artist_name.lower():
+        return event
+    event["popularity"] = first_result["popularity"]
+    return event
 
-    # with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-    #     # pass account_id and check_logs to check_account function
-    #     results = list(
-    #         executor.map(
-    #             lambda a: tidal.search_artist(artist),
-    #             [fix_artist_name(event["artist"]) for event in events],
-    #         )
-    #     )
-    for event in events:
-        fixed_artist_name = fix_artist_name(event["artist"])
-        result = tidal.search_artist(artist=fixed_artist_name)
-        if not result["items"]:
-            continue
-        first_result = result["items"][0]
-        if first_result["name"].lower() != fixed_artist_name.lower():
-            continue
-        event["popularity"] = first_result["popularity"]
-        print(event)
-    return events
+
+def check_popularity(events):
+    start_time = time.time()
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        results = list(executor.map(_event_to_event_popularity, events))
+
+    end_time = time.time()
+    logger.info(
+        "Fetched %d results in %d seconds", len(events), (end_time - start_time)
+    )
+    return results
 
 
 def events_to_html(events):
@@ -166,6 +177,7 @@ def save_html(events):
 <html>
 <head>
 <title>Hot House Jazz Events</title>
+<meta charset="utf-8">
 </head>
 <body>
 <h1>Hot House Jazz Events</h1>
@@ -173,7 +185,7 @@ def save_html(events):
 </body>
 </html>
 """
-    print("saving index.html")
+    logger.info("saving index.html")
     with open("public/index.html", "w") as f:
         f.write(html)
 
@@ -183,11 +195,12 @@ def _test_html_to_events():
         html = f.read()
 
     events = html_to_events(html)
-    print(events)
+    # print(events)
 
 
 def main():
-    print("starting...")
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    logger.info("starting...")
     events = get_calendar(25)
     events = check_popularity(events)
     save_html(events)
