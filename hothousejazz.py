@@ -56,13 +56,26 @@ def match_to_event(html):
 
 def get_url_from_html(html):
     pattern = r"event_detail\/\d+"
-    return f"https://www.hothousejazz.com/{re.search(pattern, html).group(0)}"
+    try:
+        path = re.search(pattern, html).group(0)
+    except AttributeError as ex:
+        logger.error("AttributeError for pattern %s", pattern)
+        with open("_temp_html.html", "w") as f:
+            f.write(html)
+        raise
+    return f"https://www.hothousejazz.com/{path}"
 
 
 def get_date_from_html(html):
     pattern = r"\<span\>(.*)</span>"
-    month_day = re.search(pattern, html).group(1)
-    date = re.search(r"\<h5>(\d+) <span>", html).group(1)
+    try:
+        month_day = re.search(pattern, html, re.DOTALL).group(1)
+    except AttributeError as ex:
+        logger.error("AttributeError for date")
+        with open("_temp_html.html", "w") as f:
+            f.write(html)
+        raise
+    date = re.search(r"\<h5>\s*(\d+)\s+<span>", html).group(1)
 
     return f"{date} {month_day}"
 
@@ -89,10 +102,10 @@ def get_venue_from_html(html):
 
 
 def html_to_events(html):
-    pattern = r"(<div class=.*?)\n\s+\n"
+    pattern = r"(<div class=.*?)</div>\r\n\r\n"
     matches = re.findall(pattern, html, re.DOTALL)
     events = list(filter(lambda x: x, map(match_to_event, matches)))
-    logger.debug("found %d events" % len(events))
+    logger.debug("found %d events", len(events))
     return events
 
 
@@ -197,10 +210,11 @@ def _test_html_to_events():
         html = f.read()
 
     events = html_to_events(html)
-    # print(events)
+    print(events)
 
 
 def main():
+    """let's do the thing!"""
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     # executor = ThreadPoolExecutor()
     # print(executor._max_workers)
@@ -209,7 +223,6 @@ def main():
     events = get_calendar(25)
     events = check_popularity(events)
     save_html(events)
-    return
 
 
 if __name__ == "__main__":
