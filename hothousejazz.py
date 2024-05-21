@@ -7,6 +7,7 @@ import re
 from string import Template
 import sys
 import time
+from uuid import uuid4
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
 from urllib.parse import urlencode
@@ -19,25 +20,11 @@ logger = logging.getLogger("hothousejazz")
 def fetch_calendar_json(date):
     url = "https://www.hothousejazz.com/calendar-filter"
     data = {"start_date": date, "selected_date": date}
-    logger.debug("fetching url %s date %s" % (url, date))
+    logger.debug("fetching url %s date %s", url, date)
     req = Request(url, data=urlencode(data).encode())
     req.add_header("user-agent", "Mozilla")
     resp = json.load(urlopen(req))
     return resp
-
-
-def fetch_calendar_html_old(date):
-    logger.debug("fetching events for %s ..." % date)
-    url = f"https://www.hothousejazz.com/generateCalender.php?what=event&date={date}&sort_by=&sort_id=&search_val=&venue_id=0&order_by=2"
-    logger.debug("url: %s" % url)
-    req = Request(url)
-    req.add_header("user-agent", "Mozilla")
-    try:
-        resp = urlopen(req)
-        html = resp.read().decode()
-        return html
-    except HTTPError as ex:
-        logger.error("HTTPError: %s" % ex.read())
 
 
 def match_to_event(html):
@@ -102,8 +89,10 @@ def get_venue_from_html(html):
 
 
 def html_to_events(html):
-    pattern = r"(<div class=.*?)</div>\r\n\r\n"
+    pattern = r'<div class="calendar-box">[.\s\S]*?\n\s{9}</div>'
     matches = re.findall(pattern, html, re.DOTALL)
+    if len(matches) == 0:
+        logger.error("html_to_events regex pattern found 0 events")
     events = list(filter(lambda x: x, map(match_to_event, matches)))
     logger.debug("found %d events", len(events))
     return events
@@ -117,7 +106,7 @@ def get_dates(days):
 
 
 def get_calendar(days=30):
-    logger.info("fetching %d days ..." % days)
+    logger.info("fetching %d days ...", days)
     dates = get_dates(days=days)
 
     with ThreadPoolExecutor() as executor:
@@ -216,12 +205,12 @@ def _test_html_to_events():
 def main():
     """let's do the thing!"""
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    # executor = ThreadPoolExecutor()
-    # print(executor._max_workers)
-    # return
     logger.info("starting...")
     events = get_calendar(25)
     events = check_popularity(events)
+    if len(events) == 0:
+        logger.error("no events found. Check regex")
+        sys.exit(1)
     save_html(events)
 
 

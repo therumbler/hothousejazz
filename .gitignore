@@ -2,3 +2,6 @@ public/index.html
 .mypy_cache
 .vscode
 *.pyc
+cache/*
+.DS_Store
+_temp*
