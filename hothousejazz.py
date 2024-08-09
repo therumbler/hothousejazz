@@ -54,16 +54,22 @@ def get_url_from_html(html):
 
 
 def get_date_from_html(html):
-    pattern = r"\<span\>(.*)</span>"
+    pattern = r"\<span\>(.*?)</span>"
     try:
         month_day = re.search(pattern, html, re.DOTALL).group(1)
     except AttributeError as ex:
-        logger.error("AttributeError for date")
+        logger.error("AttributeError for month_day")
         with open("_temp_html.html", "w") as f:
             f.write(html)
         raise
-    date = re.search(r"\<h5>\s*(\d+)\s+<span>", html).group(1)
-
+    try:
+        date = re.search(r'"al-date">(\d{2}?)\s+', html).group(1)
+        # date = re.search(r"\<h5.*>(\d+)\s+<span>", html).group(1)
+    except AttributeError as ex:
+        logger.error("AttributeError for date")
+        with open("_temp_html.html", "w", encoding="utf-8") as f:
+            f.write(html)
+        raise
     return f"{date} {month_day}"
 
 
@@ -85,7 +91,8 @@ def get_city_from_html(html):
 
 def get_venue_from_html(html):
     pattern = r'<p><i class="fas fa-map-marker-alt"></i>(.*?)</p>\s*<p>'
-    return re.search(pattern, html).group(1).strip()
+    pattern = r'target="_blank">\s*(.*?)\s+</a>'
+    return re.search(pattern, html, re.DOTALL).group(1).strip()
 
 
 def html_to_events(html):
@@ -195,7 +202,7 @@ def save_html(events):
 
 
 def _test_html_to_events():
-    with open("_events.html") as f:
+    with open("_temp_html.html") as f:
         html = f.read()
 
     events = html_to_events(html)
