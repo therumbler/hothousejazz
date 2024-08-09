@@ -90,9 +90,12 @@ def get_city_from_html(html):
 
 
 def get_venue_from_html(html):
-    pattern = r'<p><i class="fas fa-map-marker-alt"></i>(.*?)</p>\s*<p>'
     pattern = r'target="_blank">\s*(.*?)\s+</a>'
-    return re.search(pattern, html, re.DOTALL).group(1).strip()
+
+    venue = re.search(pattern, html, re.DOTALL).group(1).strip()
+    pattern = r"<p>(.*?)</p>"
+    neighbourhood = re.search(pattern, html).group(1)
+    return f"{venue}, {neighbourhood}"
 
 
 def html_to_events(html):
@@ -212,6 +215,7 @@ def _test_html_to_events():
 def main():
     """let's do the thing!"""
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
     logger.info("starting...")
     events = get_calendar(25)
     events = check_popularity(events)
