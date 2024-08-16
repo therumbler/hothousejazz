@@ -5,3 +5,4 @@ public/index.html
 cache/*
 .DS_Store
 _temp*
+__pycache__
