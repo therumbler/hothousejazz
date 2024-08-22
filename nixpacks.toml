@@ -1,4 +1,4 @@
-providers = ["...", "python"]
+providers = ["...", "staticfiles", "python"]
 
 [phases.build]
 cmds = ["python3 ./hothousejazz.py"]
