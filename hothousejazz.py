@@ -187,18 +187,12 @@ def events_to_html(events):
 
 def save_html(events):
     events_html = events_to_html(events)
-    html = f"""
-<html>
-<head>
-<title>Hot House Jazz Events</title>
-<meta charset="utf-8">
-</head>
-<body>
-<h1>Hot House Jazz Events</h1>
-{events_html}
-</body>
-</html>
-"""
+    with open("./templates/index.html") as f:
+        template_string = f.read()
+    
+    template = Template(template_string)
+    html = template.substitute(events_html=events_html)
+
     logger.info("saving index.html")
     with open("public/index.html", "w") as f:
         f.write(html)
