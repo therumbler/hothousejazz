@@ -1,7 +1,7 @@
 providers = ["python"]
 
 [phases.build]
-cmds = ["python3 ./hothousejazz.py"]
+cmds = ["uv run python3 ./hothousejazz.py"]
 
 [start]
 cmd = "cd ./public; python3 -m http.server"
