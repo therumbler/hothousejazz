@@ -41,10 +41,11 @@ class Tidal:
     def search_artist(self, artist_name):
         """search tidal by artist name name"""
         url = f"https://api.tidalhifi.com/v1/search?types=artists&token={TOKEN}&countryCode=US&query={quote(artist_name)}"
-        # print("searching %s" % artist)
-        # print("loading url %s" % url)
 
-        return json.load(urlopen(url))["artists"]
+        logger.debug("loading url %s", url)
+        resp = json.load(urlopen(url))["artists"]
+        logger.debug("fetched %d artists", len(resp))
+        return resp
 
     def search_all(self, query, **params):
         endpoint = "search"

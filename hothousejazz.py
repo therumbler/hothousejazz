@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 import json
 import logging
+import os
 import re
 from string import Template
 import sys
@@ -104,7 +105,6 @@ def html_to_events(html):
     if len(matches) == 0:
         logger.error("html_to_events regex pattern found 0 events")
     events = list(filter(lambda x: x, map(match_to_event, matches)))
-    logger.debug("found %d events", len(events))
     return events
 
 
@@ -207,7 +207,8 @@ def _test_html_to_events():
 
 def main():
     """let's do the thing!"""
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+    logging.basicConfig(level=LOG_LEVEL, stream=sys.stdout)
 
     logger.info("starting...")
     events = get_calendar(25)
