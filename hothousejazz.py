@@ -18,6 +18,9 @@ from tidal import Tidal
 logger = logging.getLogger("hothousejazz")
 
 
+tidal = Tidal()
+
+
 def fetch_calendar_json(date):
     url = "https://www.hothousejazz.com/calendar-filter"
     data = {"start_date": date, "selected_date": date}
@@ -143,7 +146,6 @@ def fix_artist_name(artist):
 
 
 def _event_to_event_popularity(event):
-    tidal = Tidal()
     fixed_artist_name = fix_artist_name(event["artist"])
     result = tidal.search_artist(artist_name=fixed_artist_name)
     if not result["items"]:
