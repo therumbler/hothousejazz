@@ -119,7 +119,7 @@ def get_calendar(days=30):
     logger.info("fetching %d days ...", days)
     dates = get_dates(days=days)
 
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         logger.info("using %d workers to fetch calendars", executor._max_workers)
         json_list = list(executor.map(fetch_calendar_json, dates))
 
