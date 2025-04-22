@@ -2,7 +2,7 @@ from functools import lru_cache
 import json
 import logging
 from urllib.request import urlopen, Request
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 
 # TOKEN = y3Ab6MUg5bjjofvu
@@ -42,9 +42,13 @@ class Tidal:
         """search tidal by artist name name"""
         url = f"https://api.tidalhifi.com/v1/search?types=artists&token={TOKEN}&countryCode=US&query={quote(artist_name)}"
 
-        logger.debug("loading url %s", url)
-        resp = json.load(urlopen(url))["artists"]
-        logger.debug("fetched %d artists", len(resp))
+        # logger.debug("loading url %s", url)
+        try:
+            resp = json.load(urlopen(url))["artists"]
+        except URLError as ex:
+            logger.error("URLError %s: error fetching %s", ex.reason, url)
+            raise
+        # logger.debug("fetched %d artists", len(resp))
         return resp
 
     def search_all(self, query, **params):
