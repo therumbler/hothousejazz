@@ -145,7 +145,7 @@ def fix_artist_name(artist):
 def _event_to_event_popularity(event):
     tidal = Tidal()
     fixed_artist_name = fix_artist_name(event["artist"])
-    result = tidal.search_artist(artist=fixed_artist_name)
+    result = tidal.search_artist(artist_name=fixed_artist_name)
     if not result["items"]:
         return event
     first_result = result["items"][0]
@@ -189,7 +189,6 @@ def save_html(events):
     events_html = events_to_html(events)
     with open("./templates/index.html") as f:
         template_string = f.read()
-    
     template = Template(template_string)
     html = template.substitute(events_html=events_html)
 

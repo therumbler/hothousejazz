@@ -1,5 +1,6 @@
 from functools import lru_cache
 import json
+import logging
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
 from urllib.parse import quote, urlencode
@@ -12,18 +13,67 @@ TOKEN = "CzET4vdadNUFQ5JU"
 # TOKEN = "NIh99tUmaAyLNmEA"
 # TOKEN = "jdDuod31BUA6qXXq"
 
+logger = logging.getLogger(__name__)
+
 
 class Tidal:
-    def _fetch(self, url):
-        # print("loading url %s" % url)
-        return json.load(urlopen(url))
+    base_url = "https://api.tidalhifi.com/v1"
+
+    def _fetch(self, endpoint: str, **params) -> dict:
+        params = self._add_default_params(params)
+        url = f"{self.base_url}/{endpoint}?{urlencode(params)}"
+        logger.debug("loading url %s" % url)
+        try:
+            with urlopen(url) as resp:
+                return json.load(urlopen(url))
+        except HTTPError as ex:
+            logger.error("HTTP Error %d: error fetching %s", ex.code, url)
+            return {}
+
+    def _add_default_params(self, params: dict) -> dict:
+        if "token" not in params:
+            params["token"] = TOKEN
+        if "countryCode" not in params:
+            params["countryCode"] = "US"
+        return params
 
     @lru_cache
-    def search_artist(self, artist):
-        url = f"https://api.tidalhifi.com/v1/search?types=artists&token={TOKEN}&countryCode=US&query={quote(artist)}"
+    def search_artist(self, artist_name):
+        """search tidal by artist name name"""
+        url = f"https://api.tidalhifi.com/v1/search?types=artists&token={TOKEN}&countryCode=US&query={quote(artist_name)}"
         # print("searching %s" % artist)
         # print("loading url %s" % url)
+
         return json.load(urlopen(url))["artists"]
+
+    def search_all(self, query, **params):
+        endpoint = "search"
+        limit = 100
+        if not params:
+            params = {"types": "tracks", "query": quote(query), "limit": limit}
+        if "query" not in params:
+            params["query"] = query
+        resp = self._fetch(endpoint=endpoint, **params)
+        total_number_of_tracks = resp["tracks"]["totalNumberOfItems"]
+        offset = resp["tracks"]["offset"]
+        while len(resp["tracks"]["items"]) < total_number_of_tracks:
+            offset += limit
+            params["offset"] = offset
+            logger.debug("offset: %d", offset)
+            resp1 = self._fetch(endpoint, **params)
+            resp["tracks"]["items"].extend(resp1["tracks"]["items"])
+        return resp
+
+    @lru_cache
+    def search(self, query, **params):
+        """use the search endpoint"""
+        # url = f"https://api.tidalhifi.com/v1/search?types=artists&token={TOKEN}&countryCode=US&query={quote(artist)}"
+        endpoint = "search"
+        if not params:
+            params = {"types": "artists", "query": quote(query)}
+        if "query" not in params:
+            params["query"] = query
+        return self._fetch(endpoint=endpoint, **params)
 
     def get_mix(self, mix_id):
         params = {
@@ -40,7 +90,8 @@ class Tidal:
 
     def get_album(self, album_id):
         url = f"https://api.tidalhifi.com/v1/albums/{album_id}?countryCode=US&token={TOKEN}"
-        return self._fetch(url)
+        endpoint = f"albums/{album_id}"
+        return self._fetch(endpoint)
 
 
 def get_year_count_from_mix(mix):
@@ -76,14 +127,31 @@ def _get_album_image_url(album, width=1280, height=1280):
 
 
 def main():
+    import os
+
     tidal = Tidal()
-    album_id = 202990883
-    album = tidal.get_album(album_id)
-    url = _get_album_image_url(album)
-    print("url", url)
+    log_level = os.environ.get("LOG_LEVEL", "DEBUG")
+    logging.basicConfig(level=log_level)
+    # album_id = 202990883
+    # album = tidal.get_album(album_id)
+    # url = _get_album_image_url(album)
+    # print("url", url)
+    query = "oscar peterson"
+    resp = tidal.search_all(query=query, types="TRACKS", limit=100)
+    for item in resp["tracks"]["items"]:
+        if "HIRES_LOSSLESS" not in item["mediaMetadata"]["tags"]:
+            # if item["audioQuality"] in ("HIGH"):
+            continue
+        artist_names = [a["name"] for a in item["artists"]]
+        logger.info(
+            "%s — %s - %s ",
+            " & ".join(artist_names),
+            item["title"],
+            item["album"]["title"],
+        )
     return
 
-    result = tidal.search_artist(artist="u2")
+    result = tidal.search_artist(artist_name="u2")
     print(result)
     return
     mix_id = "00900ca36f4ef5a00a49d7c6192b3f"
@@ -91,10 +159,10 @@ def main():
     mix = tidal.get_mix(mix_id)
     # print(mix)
     resp = get_year_count_from_mix(mix)
-    # resp = tidal.search_artist(artist="jamile")
+    # resp = tidal.search_artist(artist_name="jamile")
 
     print(resp)
-    # results = tidal.search_artist(artist="Eddie Henderson")
+    # results = tidal.search_artist(artist_name="Eddie Henderson")
     # print(results)
 
 
