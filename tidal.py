@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 class Tidal:
     base_url = "https://api.tidalhifi.com/v1"
 
+    def __init__(self):
+        self._session = requests.Session()
+
     def _fetch(self, endpoint: str, **params) -> dict:
         params = self._add_default_params(params)
         url = f"{self.base_url}/{endpoint}?{urlencode(params)}"
@@ -46,7 +49,7 @@ class Tidal:
         url = f"https://api.tidal.com/v1/search?types=artists&token={TOKEN}&countryCode=US&query={quote(artist_name)}"
 
         # logger.debug("loading url %s", url)
-        return requests.get(url).json()["artists"]
+        return self._session.get(url).json()["artists"]
         # try:
         #     resp = json.load(urlopen(url))["artists"]
         # except URLError as ex:
