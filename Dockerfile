@@ -1,5 +1,8 @@
 FROM python:3.12.4 AS builder
 
+
+RUN pip install uv
+
 WORKDIR /app
 
 COPY uv.lock pyproject.toml ./
