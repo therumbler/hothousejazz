@@ -2,6 +2,8 @@ FROM python:3.12.4 AS builder
 
 WORKDIR /app
 
+COPY uv.lock pyproject.toml ./
+RUN uv sync
 COPY . .
 RUN python3 hothousejazz.py
 
