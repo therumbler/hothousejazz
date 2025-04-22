@@ -1,4 +1,4 @@
-FROM python:3.12.4 AS builder
+FROM python:3.13.3 AS builder
 
 
 RUN pip install uv
@@ -8,7 +8,7 @@ WORKDIR /app
 COPY uv.lock pyproject.toml ./
 RUN uv sync
 COPY . .
-RUN python3 hothousejazz.py
+RUN uv run python3 hothousejazz.py
 
 
 FROM nginx:latest
