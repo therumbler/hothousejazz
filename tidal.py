@@ -40,7 +40,7 @@ class Tidal:
     @lru_cache
     def search_artist(self, artist_name):
         """search tidal by artist name name"""
-        url = f"https://api.tidalhifi.com/v1/search?types=artists&token={TOKEN}&countryCode=US&query={quote(artist_name)}"
+        url = f"https://api.tidal.com/v1/search?types=artists&token={TOKEN}&countryCode=US&query={quote(artist_name)}"
 
         # logger.debug("loading url %s", url)
         try:
