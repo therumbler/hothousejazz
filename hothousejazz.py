@@ -119,7 +119,7 @@ def get_calendar(days=30):
     logger.info("fetching %d days ...", days)
     dates = get_dates(days=days)
 
-    with ThreadPoolExecutor(max_workers=1) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         logger.info("using %d workers to fetch calendars", executor._max_workers)
         json_list = list(executor.map(fetch_calendar_json, dates))
 
@@ -157,7 +157,7 @@ def _event_to_event_popularity(event):
 
 def check_popularity(events):
     start_time = time.time()
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=1) as executor:
         logger.info("using %d workers to fetch popularity", executor._max_workers)
         results = list(executor.map(_event_to_event_popularity, events))
 
